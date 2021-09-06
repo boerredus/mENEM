@@ -144,7 +144,8 @@ def generate_pdf(paths: list, pdf_name: str, abspath: str) -> None:
     images = [Image.open(img).convert('RGB') for img in paths]
     pdf_path = f'{abspath}/{pdf_name}'
 
-    first_img.save(pdf_path, 'PDF', resolution=100.0, save_all=True, append_images=images)
+    first_img.save(pdf_path, 'PDF', resolution=100.0,
+                   save_all=True, append_images=images)
     shutil.rmtree(f'{abspath}/images')
 
 
