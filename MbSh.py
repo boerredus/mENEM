@@ -128,14 +128,17 @@ class MbSh(cmd.Cmd):
         utils.cprint(color='red', text=f'`{line}` is not a known syntax')
 
     async def preloop(self) -> None:
-        self.config = self.readcachefile()
+        stored_config = self.readcachefile()
+        if stored_config != {}:
+            self.config = stored_config
+
         self.browser = await pyppeteer.launch()
         utils.prefix = 'mbsh: '
 
     def postloop(self) -> None:
         config = self.readcachefile()
 
-        if 'cache' in self.config and not self.config == config:
+        if 'cache' in self.config and config != {} and self.config != config:
             utils.cprint(color='yellow', text='overwrite existing cache file (y/n)? ', end='')
             overwrite = input()
             overwrite = overwrite.lower()
