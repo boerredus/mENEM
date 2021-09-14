@@ -8,7 +8,7 @@ prefix = ''
 
 async def wait_loading(page, query: str, once: bool = False):
     element = await page.querySelector(query)
-    while element == None and not once:
+    while element is None and not once:
         element = await page.querySelector(query)
         time.sleep(0.5)
 
@@ -22,20 +22,21 @@ async def screenshot(page):
 
 def get_input(text: str, color=None, confirm=True):
     while True:
-        if color == None:
-            data = input(text)
+        if color is None:
+            choice = input(text)
         else:
             cprint(color=color, text=text, end='')
-            data = input()
+            choice = input()
 
         if confirm:
-            confirmation = get_input(text=f'is `{data}` correct (y/n)? ', color=color, confirm=False)
+            prompt = f'is `{choice}` correct (y/n)? '
+            confirmation = get_input(text=prompt, color=color, confirm=False)
             confirmation = confirmation.lower()
 
             if confirmation != 'y':
                 continue
 
-        return data
+        return choice
 
 
 def get_selection(options: list, _min: int) -> int:
@@ -47,21 +48,31 @@ def get_selection(options: list, _min: int) -> int:
         cprint(color='blue', text=f'    [{i + 1}]. {options[i]}')
     while True:
         try:
-            answer = get_input('type in your number of choice: ', confirm=False, color='blue')
+            prompt = 'type in your number of choice: '
+            answer = get_input(prompt, confirm=False, color='blue')
             answer = int(answer)
             if answer > len(options):
-                cprint(color='red', text='please, pick one of the given options')
+                prompt = 'please, pick one of the given options'
+                cprint(color='red', text=prompt)
                 continue
 
             return answer
         except ValueError:
-            cprint(color='red', text='please, input the number of one of the given options')
+            prompt = 'please, input the number of one of the given options'
+            cprint(color='red', text=prompt)
 
 
-def cprint(color: str, text: str = '', end='\n'):
+def cprint(color: str = None, text: str = '', end='\n'):
     if text == '':
         _prefix = ''
     else:
         _prefix = prefix
 
     termcolor.cprint(text=_prefix + text, color=color, end=end)
+
+
+def get_default(lst: list, idx: int, default=None):
+    if idx >= len(lst):
+        return default
+
+    return lst[idx]
