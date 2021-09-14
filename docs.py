@@ -20,3 +20,7 @@ $ mbsh> config list
 # displays this help message and exits
 $ mbsh> config help
 """
+
+MENEM = """"
+
+"""
