@@ -7,7 +7,7 @@ import utils
 
 
 def download(urls: list) -> list:
-    utils.cprint(color='blue', text='downloading images')
+    utils.cprint(text='downloading images')
     paths = []
 
     if not os.path.isdir(f'images'):

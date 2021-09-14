@@ -5,7 +5,7 @@ import utils
 
 async def get_simulation_data(page, rightness_eval, wrongs, rights) -> list:
     subjects = ['CL', 'CH', 'CN', 'MT']
-    utils.cprint(color='blue', text='fetching simulations...')
+    utils.cprint(text='fetching simulations...')
 
     await utils.wait_loading(page, 'select#codigoSimulado > option:not([value*=" "])')
     await utils.screenshot(page)
