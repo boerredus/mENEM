@@ -3,7 +3,8 @@ import time
 
 import termcolor
 
-prefix = ''
+prefix = 'mbsh: '
+loggedin = False
 
 
 async def wait_loading(page, query: str, once: bool = False):
@@ -76,3 +77,8 @@ def get_default(lst: list, idx: int, default=None):
         return default
 
     return lst[idx]
+
+
+async def goto(page, url: str) -> None:
+    if page.url != url:
+        await page.goto(url)
