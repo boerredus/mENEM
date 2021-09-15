@@ -22,5 +22,6 @@ $ mbsh> config help
 """
 
 MENEM = """"
-
+mENEM stands for melhoraENEM. It's an utility that allows you to easily re-take ENEM simulations.
+Its main feature is to download and to generate a PDF based on your selected questions.
 """
