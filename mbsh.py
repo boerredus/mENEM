@@ -55,7 +55,7 @@ class MbSh(cmd.Cmd):
                 utils.cprint(color='red', text='`config get` needs a key name')
             else:
                 val = self.config.get(key, '[undefined]')
-                utils.cprint(text=val, prefix='')
+                utils.cprint(text=val, _prefix='')
 
         elif action == 'set':
             key = utils.get_default(args, 0)
@@ -71,7 +71,7 @@ class MbSh(cmd.Cmd):
                     val = False
 
                 self.config[key] = val
-                utils.cprint(text=f'{key}: {val}', prefix='')
+                utils.cprint(text=f'{key}: {val}', _prefix='')
 
         elif action == 'clear':
             key = utils.get_default(args, 1)
@@ -86,10 +86,10 @@ class MbSh(cmd.Cmd):
 
         elif action == 'list':
             if len(self.config) == 0:
-                utils.cprint(text='[undefined]', prefix='')
+                utils.cprint(text='[undefined]', _prefix='')
             else:
                 for key, val in self.config.items():
-                    utils.cprint(text=f'{key}: {val}', prefix='')
+                    utils.cprint(text=f'{key}: {val}', _prefix='')
 
         elif action == 'load':
             configfile = utils.get_default(args, 0) or self.config.get('cache', None)
@@ -120,10 +120,10 @@ class MbSh(cmd.Cmd):
                     utils.cprint(color='green', text='settings saved')
 
         elif action == 'help':
-            utils.cprint(text=docs.CONFIG, prefix='')
+            utils.cprint(text=docs.CONFIG, _prefix='')
 
         else:
-            self.not_found_error('config')
+            self.not_found_error('config', action)
 
     async def do_history(self, args) -> None:
         'View history'
@@ -138,7 +138,7 @@ class MbSh(cmd.Cmd):
         history = history[0:-1]
 
         if action == None or action == 'print':
-            utils.cprint(text=history, prefix='')
+            utils.cprint(text=history, _prefix='')
 
         elif action == 'save':
             histfile = self.get_histfile(args, 'save')
@@ -161,10 +161,10 @@ class MbSh(cmd.Cmd):
                 self.history += lines
 
         elif action == 'help':
-            utils.cprint(text=docs.HISTORY, prefix='')
+            utils.cprint(text=docs.HISTORY, _prefix='')
 
         else:
-            self.not_found_error('history')
+            self.not_found_error('history', action)
 
     async def do_login(self, args):
         'Login on MeuBernoulli'
@@ -172,7 +172,7 @@ class MbSh(cmd.Cmd):
         args = shlex.split(args)
 
         if utils.get_default(args, 0) == 'help':
-            utils.cprint(text=docs.LOGIN, prefix='')
+            utils.cprint(text=docs.LOGIN, _prefix='')
             return
 
         email = utils.get_default(args, 0) or self.config.get('email', None)
@@ -257,7 +257,7 @@ class MbSh(cmd.Cmd):
             obj.set_page(page)
 
         if args == 'help':
-            utils.cprint(text=docs, prefix='')
+            utils.cprint(text=docs, _prefix='')
         elif args != '':
             await obj.onecmd(args)
         else:
@@ -272,8 +272,8 @@ class MbSh(cmd.Cmd):
         'Clear the terminal'
         os.system('cls' if os.name == 'nt' else 'clear')
 
-    def not_found_error(self, action) -> None:
-        msg = f'option not found; type `{action} help` for more info'
+    def not_found_error(self, cmd, action) -> None:
+        msg = f'`{cmd} {action}` not found; type `{cmd} help` for more info'
         self.default(msg=msg)
 
     def get_histfile(self, args, action):
@@ -322,7 +322,7 @@ class MbSh(cmd.Cmd):
         action = utils.get_default(args, 0)
 
         if action == 'help':
-            utils.cprint(text=help_msg, prefix='')
+            utils.cprint(text=help_msg, _prefix='')
             return
         elif ignore and action != None:
             args = ' '.join(args)
@@ -365,7 +365,8 @@ class MbSh(cmd.Cmd):
             if len(self.history) > 0:
                 if not overwrite:
                     prompt = 'save history to file (y/n)? '
-                    save_history = utils.get_input(text=prompt, color='blue', confirm=False)
+                    save_history = utils.get_input(
+                        text=prompt, color='blue', confirm=False)
                     save_history = save_history.lower()
 
                     if save_history == 'y':
