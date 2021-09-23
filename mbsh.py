@@ -126,6 +126,8 @@ class MbSh(cmd.Cmd):
             self.not_found_error('config')
 
     async def do_history(self, args) -> None:
+        'View history'
+
         args = shlex.split(args)
         action = utils.get_default(args, 0)
         args = args[1:]
@@ -267,6 +269,7 @@ class MbSh(cmd.Cmd):
         return 'EOF'
 
     def do_clear(self, args) -> None:
+        'Clear the terminal'
         os.system('cls' if os.name == 'nt' else 'clear')
 
     def not_found_error(self, action) -> None:
