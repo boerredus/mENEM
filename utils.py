@@ -3,8 +3,8 @@ import time
 
 import termcolor
 
-prefix = 'mbsh: '
-loggedin = False
+prefix: str = 'mbsh: '
+loggedin: bool = False
 
 
 async def wait_loading(page, query: str, once: bool = False):
@@ -63,13 +63,8 @@ def get_selection(options: list, _min: int) -> int:
             cprint(color='red', text=prompt)
 
 
-def cprint(color: str = None, text: str = '', end='\n'):
-    if text == '':
-        _prefix = ''
-    else:
-        _prefix = prefix
-
-    termcolor.cprint(text=_prefix + text, color=color, end=end)
+def cprint(color: str = None, text: str = '', end='\n', prefix: str=prefix) -> None:
+    termcolor.cprint(text=prefix + text, color=color, end=end)
 
 
 def get_default(lst: list, idx: int, default=None):
@@ -82,3 +77,11 @@ def get_default(lst: list, idx: int, default=None):
 async def goto(page, url: str) -> None:
     if page.url != url:
         await page.goto(url)
+
+
+def is_loggedin() -> bool:
+    if not loggedin:
+        prompt = 'in order to complete this action, you must be logged in'
+        cprint(color='red', text=prompt)
+        
+    return loggedin
