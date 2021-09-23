@@ -21,16 +21,17 @@ class MbSh(cmd.Cmd):
     browser = None
     history: list[str] = []
     menem = None
+    rutils = None
     pages: dict = {}
     config: dict[str, str] = {
         'cache': os.path.dirname(__file__) + '/config.json',
         'histfile': os.path.dirname(__file__) + '/histfile',
-        'overwrite.cache': True,
+        'overwrite.cache': False,
         'overwrite.histfile': True,
         'menem.output': None,
         'menem.level': '>0',
-        'menem.get_wrongs': 'True',
-        'menem.get_rights': 'False',
+        'menem.get_wrongs': True,
+        'menem.get_rights': False,
         'menem.image_folder': 'images'
     }
 
@@ -54,7 +55,7 @@ class MbSh(cmd.Cmd):
                 utils.cprint(color='red', text='`config get` needs a key name')
             else:
                 val = self.config.get(key, '[undefined]')
-                print(val)
+                utils.cprint(text=val, prefix='')
 
         elif action == 'set':
             key = utils.get_default(args, 0)
@@ -64,8 +65,13 @@ class MbSh(cmd.Cmd):
                 prompt = '`config set` needs a key and a value; nothing set'
                 utils.cprint(color='red', text=prompt)
             else:
+                if val == 'True':
+                    val = True
+                elif val == 'False':
+                    val = False
+
                 self.config[key] = val
-                print(f'{key}: {val}')
+                utils.cprint(text=f'{key}: {val}', prefix='')
 
         elif action == 'clear':
             key = utils.get_default(args, 1)
@@ -80,27 +86,41 @@ class MbSh(cmd.Cmd):
 
         elif action == 'list':
             if len(self.config) == 0:
-                print('[undefined]')
+                utils.cprint(text='[undefined]', prefix='')
             else:
                 for key, val in self.config.items():
-                    print(f'{key}: {val}')
+                    utils.cprint(text=f'{key}: {val}', prefix='')
 
         elif action == 'load':
-            configfile = utils.get_default(args, 1)
+            configfile = utils.get_default(args, 0) or self.config.get('cache', None)
 
             if configfile is None:
                 prompt = '`config load` needs a reference to the config file'
                 utils.cprint(text=prompt, color='red')
             else:
-                if self.read_configfile(configfile):
+                if self.file_exists(file=configfile, key=None):
+                    newconfig = self.read_configfile(configfile=configfile)
+                    self.config = newconfig
                     prompt = 'configs loaded; type `config list` to list them'
                     utils.cprint(text=prompt, color='green')
                 else:
                     prompt = f'no files named `{configfile}` found; nothing loaded'
                     utils.cprint(text=prompt, color='red')
 
+        elif action == 'save':
+            # default config file or given as argument
+            configfile = utils.get_default(args, 0) or self.config.get('cache', None)
+
+            if configfile is None or not self.file_exists(configfile, key=None):
+                prompt = '`config save` needs a reference to the config file'
+                utils.cprint(text=prompt, color='red')
+            else:
+                with open(self.config['cache'], 'w') as f:
+                    json.dump(self.config, f)
+                    utils.cprint(color='green', text='settings saved')
+
         elif action == 'help':
-            print(docs.CONFIG)
+            utils.cprint(text=docs.CONFIG, prefix='')
 
         else:
             self.not_found_error('config')
@@ -116,7 +136,7 @@ class MbSh(cmd.Cmd):
         history = history[0:-1]
 
         if action == None or action == 'print':
-            print(history)
+            utils.cprint(text=history, prefix='')
 
         elif action == 'save':
             histfile = self.get_histfile(args, 'save')
@@ -139,7 +159,7 @@ class MbSh(cmd.Cmd):
                 self.history += lines
 
         elif action == 'help':
-            print(docs.HISTORY)
+            utils.cprint(text=docs.HISTORY, prefix='')
 
         else:
             self.not_found_error('history')
@@ -150,7 +170,7 @@ class MbSh(cmd.Cmd):
         args = shlex.split(args)
 
         if utils.get_default(args, 0) == 'help':
-            print(docs.LOGIN)
+            utils.cprint(text=docs.LOGIN, prefix='')
             return
 
         email = utils.get_default(args, 0) or self.config.get('email', None)
@@ -221,17 +241,25 @@ class MbSh(cmd.Cmd):
 
     async def do_menem(self, args) -> None:
         'Enter mENEM utility'
+        await self.start_utility(args, 'menem', 'mENEM', docs.MENEM)
 
-        page = await self.get_page('menem')
-        if page != self.menem.get_page():
-            self.menem.set_page(page)
+    async def do_rutils(self, args) -> None:
+        'Enter rUtils'
+        await self.start_utility(args, 'rutils', 'rUtils', docs.RUTILS)
+
+    async def start_utility(self, args, utility: str, utility_name: str, docs: str):
+        obj = getattr(self, utility)
+
+        page = await self.get_page(utility)
+        if page != obj.get_page():
+            obj.set_page(page)
 
         if args == 'help':
-            print(docs.MENEM)
+            utils.cprint(text=docs, prefix='')
         elif args != '':
-            await self.menem.onecmd(args)
+            await obj.onecmd(args)
         else:
-            await self.menem.cmdloop('Welcome to menem! Type help or ? for help.\n')
+            await obj.cmdloop(f'Welcome to {utility_name}! Type help or ? for help.\n')
 
     def do_EOF(self, args=None) -> None:
         'Exit'
@@ -273,21 +301,14 @@ class MbSh(cmd.Cmd):
 
         return os.path.isfile(file)
 
-    def read_configfile(self, configfile='', return_data=False):
-        file_exists = self.file_exists(configfile)
+    def read_configfile(self, configfile):
+        config = r'{}'
 
-        if file_exists:
+        if self.file_exists(configfile):
             with open(self.config['cache'], 'r') as f:
                 config = f.read() or r'{}'
 
-            config = json.loads(config)
-            if config != {}:
-                self.config = config
-
-            if return_data:
-                return config
-
-        return file_exists
+        return json.loads(config)
 
     async def changeprompt(self, prompt) -> None:
         self.prompt = prompt
@@ -298,7 +319,7 @@ class MbSh(cmd.Cmd):
         action = utils.get_default(args, 0)
 
         if action == 'help':
-            print(help_msg)
+            utils.cprint(text=help_msg, prefix='')
             return
         elif ignore and action != None:
             args = ' '.join(args)
@@ -318,7 +339,7 @@ class MbSh(cmd.Cmd):
         _overwrite = False
 
         if target == 'cache':
-            configfile = self.read_configfile(return_data=True)
+            configfile = self.read_configfile(self.config.get('cache', ''))
             has_configfile = 'cache' in self.config
             configfile_empty = configfile == {}
             has_new_configs = self.config != configfile
@@ -326,8 +347,7 @@ class MbSh(cmd.Cmd):
             if has_configfile and not configfile_empty and has_new_configs:
                 if not overwrite:
                     prompt = 'overwrite existing cache file (y/ n)? '
-                    overwrite = utils.get_input(
-                        text=prompt, color='blue', confirm=False)
+                    overwrite = utils.get_input(text=prompt, color='blue', confirm=False)
                     overwrite = overwrite.lower()
 
                     if overwrite == 'y':
@@ -336,15 +356,13 @@ class MbSh(cmd.Cmd):
                         utils.cprint(text='file not overwritten')
 
             if _overwrite:
-                with open(self.config['cache'], 'w') as f:
-                    json.dump(self.config, f)
-                    utils.cprint(color='green', text='settings saved')
+                await self.onecmd('config save')
+
         elif target == 'history':
             if len(self.history) > 0:
                 if not overwrite:
                     prompt = 'save history to file (y/n)? '
-                    save_history = utils.get_input(
-                        text=prompt, color='blue', confirm=False)
+                    save_history = utils.get_input(text=prompt, color='blue', confirm=False)
                     save_history = save_history.lower()
 
                     if save_history == 'y':
@@ -356,21 +374,24 @@ class MbSh(cmd.Cmd):
                     await self.onecmd('history save')
 
     async def preloop(self) -> None:
-        self.read_configfile()
         self.browser = await pyppeteer.launch()
 
         page = await self.get_page('menem')
         self.menem = mENEM(page, self)
 
+        page = await self.get_page('rutils')
+        self.rutils = rUtils(page, self)
+
+        await self.onecmd('config load')
         await self.onecmd('history load')
 
     async def postloop(self) -> None:
         overwrite = self.config.get('overwrite', False)
+        overwrite_cache = self.config.get('overwrite.cache', False)
+        overwrite_history = self.config.get('overwrite.histfile', False)
 
-        overwrite_cache = overwrite or self.config.get(
-            'overwrite.cache', False)
-        overwrite_history = overwrite or self.config.get(
-            'overwrite.history', False)
+        overwrite_cache = overwrite or overwrite_cache
+        overwrite_history = overwrite or overwrite_history
 
         await self.close('cache', overwrite_cache)
         await self.close('history', overwrite_history)
@@ -478,9 +499,7 @@ class mENEM(cmd.Cmd):
         'Get the URLs of the simulations (questions & answers)'
         self.parent.print_help(args, docs.MENEM_GET_DATA, ignore=False)
 
-        if not utils.loggedin:
-            prompt = 'in order to complete this action, you must be logged in'
-            utils.cprint(color='red', text=prompt)
+        if not utils.is_loggedin():
             return
 
         await utils.goto(self.page, 'https://meu.bernoulli.com.br/simulados/aluno/provas_correcoes')
@@ -489,11 +508,9 @@ class mENEM(cmd.Cmd):
         get_wrongs = self.parent.config.get('menem.get_wrongs', True)
         get_rights = self.parent.config.get('menem.get_rights', False)
 
-        get_wrongs = str(get_wrongs) == 'True'
-        get_rights = str(get_rights) == 'True'
+        default_level = self.parent.config.get('level', '>0')
+        level = utils.get_default(args, 0) or default_level
 
-        level = utils.get_default(
-            args, 0) or self.parent.config.get('level', '>0')
         parsed, err = self.level_parser(level)
 
         subjects = ['CL', 'CH', 'CN', 'MT']
@@ -740,7 +757,7 @@ class mENEM(cmd.Cmd):
         utils.prefix = 'menem: '
 
     async def postloop(self) -> None:
-        prompt = 'close MB tab (y/n)? '
+        prompt = 'close MeuBernoulli tab (y/n)? '
         choice = utils.get_input(text=prompt, color='blue', confirm=False)
 
         if choice == 'y':
@@ -765,6 +782,140 @@ class mENEM(cmd.Cmd):
             await self.preloop()
         else:
             self.preloop()
+
+        try:
+            import readline
+
+            old_completer = readline.get_completer()
+            readline.set_completer(self.parent.complete)
+            readline.parse_and_bind(completekey+": complete")
+        except ImportError:
+            pass
+
+        try:
+            if intro is not None:
+                self.intro = intro
+
+            if self.intro:
+                self.stdout.write(str(self.intro)+"\n")
+
+            stop = None
+
+            while not stop:
+                try:
+                    line = input(self.prompt)
+                except EOFError:
+                    line = 'EOF'
+
+                line = self.parent.precmd(line)
+                stop = await self.onecmd(line)
+                stop = self.parent.postcmd(stop, line)
+
+            if inspect.iscoroutinefunction(self.postloop):
+                await self.postloop()
+            else:
+                self.postloop()
+
+        finally:
+            if self.parent.use_rawinput and completekey:
+                try:
+                    import readline
+
+                    readline.set_completer(old_completer)
+                except ImportError:
+                    pass
+
+    async def onecmd(self, line):
+        self.parent.history.append(line)
+        cmd, arg, line = self.parent.parseline(line)
+
+        if not line:
+            return self.emptyline()
+
+        if cmd is None:
+            return self.default(line)
+
+        self.lastcmd = line
+
+        if line == 'EOF':
+            self.lastcmd = ''
+
+        if cmd == '':
+            return self.parent.default(line)
+        else:
+            try:
+                func = getattr(self, 'do_' + cmd)
+            except AttributeError:
+                return self.default(line)
+
+            if inspect.iscoroutinefunction(func):
+                return await func(arg)
+
+            return func(arg)
+
+
+class rUtils(cmd.Cmd):
+    page = None
+    parent: MbSh = None
+    prompt: str = 'rutils> '
+
+    def __init__(self, page, parent) -> None:
+        super().__init__()
+
+        self.page = page
+        self.parent = parent
+
+    def do_clear(self, args) -> None:
+        'Clear the terminal'
+        self.parent.do_clear(args)
+
+    async def do_history(self, args) -> None:
+        'View history'
+        await self.parent.do_history(args)
+
+    def do_EOF(self, args=None) -> None:
+        'Exit'
+        print()
+        return 'EOF'
+
+    def get_page(self):
+        return self.page
+
+    def set_page(self, page) -> None:
+        self.page = page
+
+    async def preloop(self) -> None:
+        utils.prefix = 'rutils: '
+
+        if not utils.is_loggedin():
+            return 'EOF'
+
+    async def postloop(self) -> None:
+        prompt = 'close Imaginie tab (y/n)? '
+        choice = utils.get_input(text=prompt, color='blue', confirm=False)
+
+        if choice == 'y':
+            await self.page.close()
+
+        utils.prefix = 'mbsh: '
+
+    def default(self, line=None, msg=None) -> None:
+        self.parent.default(line=line, msg=msg)
+
+    def emptyline(self) -> None:
+        pass
+
+    async def cmdloop(self, intro=None):
+        old_completer = None
+        completekey = 'tab'
+
+        if inspect.iscoroutinefunction(self.preloop):
+            stop = await self.preloop()
+        else:
+            stop = self.preloop()
+
+        if stop == 'EOF':
+            return
 
         try:
             import readline
