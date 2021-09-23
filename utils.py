@@ -63,8 +63,11 @@ def get_selection(options: list, _min: int) -> int:
             cprint(color='red', text=prompt)
 
 
-def cprint(color: str = None, text: str = '', end='\n', prefix: str=prefix) -> None:
-    termcolor.cprint(text=prefix + text, color=color, end=end)
+def cprint(color: str = None, text: str = '', end='\n', _prefix: str=None) -> None:
+    if _prefix is None:
+        _prefix = prefix
+
+    termcolor.cprint(text=_prefix + text, color=color, end=end)
 
 
 def get_default(lst: list, idx: int, default=None):
