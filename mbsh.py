@@ -476,7 +476,7 @@ class mENEM(cmd.Cmd):
 
     async def do_get_data(self, args):
         'Get the URLs of the simulations (questions & answers)'
-        self.parent.print_help(args, docs.MENEM_GET_DATA, stop=False)
+        self.parent.print_help(args, docs.MENEM_GET_DATA, ignore=False)
 
         if not utils.loggedin:
             prompt = 'in order to complete this action, you must be logged in'
