@@ -23,7 +23,7 @@ class MbSh(cmd.Cmd):
     menem = None
     rutils = None
     pages: dict = {}
-    config: dict[str, str] = {
+    config: dict[str] = {
         'cache': os.path.dirname(__file__) + '/config.json',
         'histfile': os.path.dirname(__file__) + '/histfile',
         'overwrite.cache': False,
@@ -32,7 +32,12 @@ class MbSh(cmd.Cmd):
         'menem.level': '>0',
         'menem.get_wrongs': True,
         'menem.get_rights': False,
-        'menem.image_folder': 'images'
+        'menem.image_folder': 'images',
+        'output': utils.output.get('output', True),
+        'output.log': utils.output.get('output.log', True),
+        'output.success': utils.output.get('output.success', False),
+        'output.warn': utils.output.get('output.warn', True),
+        'output.error': utils.output.get('output.error', True)
     }
 
     def do_config(self, args) -> None:
@@ -71,6 +76,7 @@ class MbSh(cmd.Cmd):
                     val = False
 
                 self.config[key] = val
+                self.update_output()
                 utils.cprint(text=f'{key}: {val}', _prefix='')
 
         elif action == 'clear':
@@ -101,6 +107,7 @@ class MbSh(cmd.Cmd):
                 if self.file_exists(file=configfile, key=None):
                     newconfig = self.read_configfile(configfile=configfile)
                     self.config = newconfig
+                    self.update_output()
                     prompt = 'configs loaded; type `config list` to list them'
                     utils.cprint(text=prompt, color='green')
                 else:
@@ -271,6 +278,14 @@ class MbSh(cmd.Cmd):
     def do_clear(self, args) -> None:
         'Clear the terminal'
         os.system('cls' if os.name == 'nt' else 'clear')
+
+    def update_output(self) -> None:
+        for key, val in self.config.items():
+            if key.startswith('output'):
+                old_val = utils.output[key]
+                
+                if old_val != val:
+                    utils.output[key] = val
 
     def not_found_error(self, cmd, action) -> None:
         msg = f'`{cmd} {action}` not found; type `{cmd} help` for more info'
