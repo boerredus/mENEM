@@ -92,3 +92,6 @@ Note: if an output is given, it overwrites the config (see `config help`) `menem
 
 RUTILS = """
 """
+
+RUTILS_GET_ESSAYS = """
+"""
