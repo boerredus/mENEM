@@ -8,17 +8,25 @@ loggedin: bool = False
 output: dict[str, bool] = {
     'output': True,
     'output.log': True,
-    'output.success': False,
+    'output.success': True,
     'output.warn': True,
     'output.error': True
 }
 
 
-async def wait_loading(page, query: str, once: bool = False):
-    element = await page.querySelector(query)
-    while element is None and not once:
+async def wait_loading(page, query: str='', once: bool = False, eval_query: str=None, val=None, sleep=0.5):
+    if eval_query != None:
+        element = await page.evaluate(eval_query)
+    else:
         element = await page.querySelector(query)
-        time.sleep(0.5)
+
+    while element == val and not once:
+        if eval_query != None:
+            element = await page.evaluate(eval_query)
+        else:
+            element = await page.querySelector(query)
+
+        time.sleep(sleep)
 
     return element
 
@@ -70,10 +78,10 @@ def get_selection(options: list, _min: int) -> int:
             cprint(color='red', text=prompt)
 
 
-def cprint(color: str = None, text: str = '', end='\n', _prefix: str=None) -> None:
+def cprint(color: str = None, text: str = '', end='\n', _prefix: str=None, force: bool=False) -> None:
     _output = output.get('output', True)
     log = output.get('output.log', True)
-    success = output.get('output.success', False)
+    success = output.get('output.success', True)
     warn = output.get('output.warn', True)
     error = output.get('output.error', True)
 
@@ -84,7 +92,7 @@ def cprint(color: str = None, text: str = '', end='\n', _prefix: str=None) -> No
     hide_error = color == 'red' and not error
     hide = hide_output or hide_log or hide_success or hide_warn or hide_error
 
-    if color != 'blue' and hide:
+    if not force and color != 'blue' and hide:
         return
 
     if _prefix == None:
@@ -105,9 +113,24 @@ async def goto(page, url: str) -> None:
         await page.goto(url)
 
 
-def check_login() -> bool:
-    if not loggedin:
+def check_login(is_loggedin=None) -> bool:
+    if is_loggedin == None:
+        is_loggedin = loggedin
+
+    if not is_loggedin:
         prompt = 'in order to complete this action, you must be logged in'
         cprint(color='red', text=prompt)
         
-    return loggedin
+    return is_loggedin
+
+
+def is_cmd_safe(cmd, report=True):
+    cmd = cmd.strip()
+    action = get_default(cmd.split(' '), 0)
+    is_cmd_allowed = action in ['EOF', 'clear', 'config', 'help', 'history', 'login']
+
+    if not is_cmd_allowed and report:
+        prompt = f'skipping `{cmd}`'
+        cprint(text=prompt, color='yellow', _prefix='', force=True)
+    
+    return is_cmd_allowed
