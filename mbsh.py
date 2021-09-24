@@ -10,6 +10,7 @@ from PIL import Image
 
 import requests
 import pyppeteer
+from tssplit.tssplit import tssplit
 
 import docs
 import utils
@@ -35,9 +36,11 @@ class MbSh(cmd.Cmd):
         'menem.image_folder': 'images',
         'output': utils.output.get('output', True),
         'output.log': utils.output.get('output.log', True),
-        'output.success': utils.output.get('output.success', False),
+        'output.success': utils.output.get('output.success', True),
         'output.warn': utils.output.get('output.warn', True),
-        'output.error': utils.output.get('output.error', True)
+        'output.error': utils.output.get('output.error', True),
+        'on.start': 'config load; history load; login',
+        'on.stop': None
     }
 
     def do_config(self, args) -> None:
@@ -107,9 +110,9 @@ class MbSh(cmd.Cmd):
                 if self.file_exists(file=configfile, key=None):
                     newconfig = self.read_configfile(configfile=configfile)
                     self.config = newconfig
-                    self.update_output()
                     prompt = 'configs loaded; type `config list` to list them'
                     utils.cprint(text=prompt, color='green')
+                    self.update_output()
                 else:
                     prompt = f'no files named `{configfile}` found; nothing loaded'
                     utils.cprint(text=prompt, color='red')
@@ -176,22 +179,30 @@ class MbSh(cmd.Cmd):
     async def do_login(self, args):
         'Login on MeuBernoulli'
 
-        args = shlex.split(args)
-
-        if utils.get_default(args, 0) == 'help':
-            utils.cprint(text=docs.LOGIN, _prefix='')
+        if utils.loggedin:
+            prompt = 'already logged in'
+            utils.cprint(text=prompt, force=True)
             return
 
-        email = utils.get_default(args, 0) or self.config.get('email', None)
-        password = utils.get_default(
-            args, 1) or self.config.get('password', None)
+        if self.need_help(args, docs.LOGIN):
+            return
+
+        args = shlex.split(args)
+        given_email = utils.get_default(args, 0)
+        saved_email = self.config.get('email', None)
+        email = given_email or saved_email
+
+        given_password = utils.get_default(args, 1)
+        saved_password = self.config.get('password', None)
+        password = given_password or saved_password
+
         page = await self.get_page('login')
         await utils.goto(page, 'https://meu.bernoulli.com.br/login')
 
         if email is None:
             prompt = 'type in your email address: '
             email = utils.get_input(text=prompt, color='blue')
-            choice = utils.get_input(text='save email (y/n)? ', color='blue')
+            choice = utils.get_input(text='save email (y/n)? ', color='blue', confirm=False)
             choice = choice.lower()
             if choice == 'y':
                 self.config['email'] = email
@@ -201,7 +212,7 @@ class MbSh(cmd.Cmd):
             prompt = 'type in your password: '
             password = utils.get_input(text=prompt, color='blue')
             prompt = 'save password (y/n)? '
-            choice = utils.get_input(text=prompt, color='blue')
+            choice = utils.get_input(text=prompt, color='blue', confirm=False)
             choice = choice.lower()
             if choice == 'y':
                 self.config['password'] = password
@@ -332,17 +343,14 @@ class MbSh(cmd.Cmd):
         self.prompt = prompt
         await self.onecmd('')
 
-    def print_help(self, args, help_msg, ignore=True) -> None:
+    def need_help(self, args, help_msg) -> bool:
         args = shlex.split(args)
         action = utils.get_default(args, 0)
 
         if action == 'help':
             utils.cprint(text=help_msg, _prefix='')
-            return
-        elif ignore and action != None:
-            args = ' '.join(args)
-            prompt = f'ignoring `{args}`'
-            utils.cprint(text=prompt)
+
+        return action == 'help'
 
     def default(self, line=None, msg=None) -> None:
         if msg == None:
@@ -389,11 +397,11 @@ class MbSh(cmd.Cmd):
                     else:
                         utils.cprint(text='unsaved history discarded')
 
-                if _overwrite:
-                    await self.onecmd('history save')
+            if _overwrite:
+                await self.onecmd('history save')
 
-    async def preloop(self) -> None:
-        self.browser = await pyppeteer.launch()
+    async def preloop(self, headless) -> None:
+        self.browser = await pyppeteer.launch({'headless': headless})
 
         page = await self.get_page('menem')
         self.menem = mENEM(page, self)
@@ -401,10 +409,41 @@ class MbSh(cmd.Cmd):
         page = await self.get_page('rutils')
         self.rutils = rUtils(page, self)
 
-        await self.onecmd('config load')
-        await self.onecmd('history load')
+        prestart = self.config.get('on.start', None)
+        if prestart != None:
+            output_bak = self.config.get('output', None)
+            cmds = tssplit(prestart, delimiter=';')
+
+            for cmd in cmds:
+                if utils.is_cmd_safe(cmd):
+                    self.config['output'] = False
+                    self.update_output()
+                    await self.onecmd(cmd)
+
+            if output_bak == None:
+                del self.config['output']
+            else:
+                self.config['output'] = output_bak
+
+            self.update_output()
 
     async def postloop(self) -> None:
+        prestop = self.config.get('on.stop', None)
+        if prestop != None:
+            output_bak = self.config.get('output', None)
+            cmds = tssplit(prestop, delimiter=';')
+
+            for cmd in cmds:
+                if utils.is_cmd_safe(cmd):
+                    self.config['output'] = False
+                    self.update_output()
+                    await self.onecmd(cmd)
+
+            if output_bak == None:
+                del self.config['output']
+            else:
+                self.config['output'] = output_bak
+
         overwrite = self.config.get('overwrite', False)
         overwrite_cache = self.config.get('overwrite.cache', False)
         overwrite_history = self.config.get('overwrite.histfile', False)
@@ -415,15 +454,15 @@ class MbSh(cmd.Cmd):
         await self.close('cache', overwrite_cache)
         await self.close('history', overwrite_history)
 
-    async def cmdloop(self, intro=None):
+    async def cmdloop(self, intro=None, headless=True):
         old_completer = None
         completekey = 'tab'
         parent = super()
 
         if inspect.iscoroutinefunction(self.preloop):
-            await self.preloop()
+            await self.preloop(headless=headless)
         else:
-            self.preloop()
+            self.preloop(headless=headless)
 
         try:
             import readline
@@ -516,7 +555,9 @@ class mENEM(cmd.Cmd):
 
     async def do_get_data(self, args):
         'Get the URLs of the simulations (questions & answers)'
-        self.parent.print_help(args, docs.MENEM_GET_DATA, ignore=False)
+
+        if self.parent.need_help(args, docs.MENEM_GET_DATA):
+            return
 
         if not utils.check_login():
             return
@@ -614,9 +655,10 @@ class mENEM(cmd.Cmd):
     def do_download_images(self, args):
         'Download images from the URLs'
 
-        self.parent.print_help(args, docs.MENEM_DOWNLOAD_IMAGES)
-        args = shlex.split(args)
+        if self.parent.need_help(args, docs.MENEM_DOWNLOAD_IMAGES):
+            return
 
+        args = shlex.split(args)
         default_path = self.parent.config.get('menem.image_folder', 'images')
         path = utils.get_default(args, 0) or default_path
 
@@ -648,7 +690,9 @@ class mENEM(cmd.Cmd):
     def do_gen_pdf(self, args):
         'Generate a pdf with the downloaded images'
 
-        self.parent.print_help(args, docs.MENEM_GEN_PDF)
+        if self.parent.need_help(args, docs.MENEM_GEN_PDF):
+            return
+
         args = shlex.split(args)
         output = utils.get_default(args, 0)
         imgs = []
@@ -672,8 +716,7 @@ class mENEM(cmd.Cmd):
             imgs.append(img)
 
         output = output or self.parent.config['menem.output']
-        pdf.save(output, 'PDF', resolution=100.0,
-                 save_all=True, append_images=imgs)
+        pdf.save(output, 'PDF', resolution=100.0, save_all=True, append_images=imgs)
 
         prompt = 'delete downloaded images (y/n)? '
         choice = utils.get_input(text=prompt, color='blue', confirm=False)
@@ -877,12 +920,74 @@ class rUtils(cmd.Cmd):
     page = None
     parent: MbSh = None
     prompt: str = 'rutils> '
+    token: str = None
+    loggedin: bool = False
 
     def __init__(self, page, parent) -> None:
         super().__init__()
 
         self.page = page
         self.parent = parent
+
+    async def do_login(self, args) -> None:
+        'Enter Imaginie page'
+
+        if self.loggedin:
+            prompt = 'already logged in'
+            utils.cprint(text=prompt, force=True)
+            return
+
+        args = shlex.split(args)
+        given_token = utils.get_default(args, 0)
+        saved_token = self.parent.config.get('rutils.token', None)
+        token = given_token or saved_token or self.token
+        utils.cprint(text='logging in')
+
+        if token != None:
+            url = f'https://alunos.imaginie.com.br/?token={token}'
+            await utils.goto(self.page, url)
+        else:
+            await utils.goto(self.page, 'https://meu.bernoulli.com.br/')
+            fetchReq = """
+            (async function(){
+                const endpoint = 'https://meu.bernoulli.com.br/simulados/aluno/redacao';
+                let res = await fetch(endpoint, { method: 'GET' });
+                res = await res.json()
+                return res.mensagem.url
+            })()
+            """
+            url = await self.page.evaluate(fetchReq)
+            token = url.replace('https://alunos.imaginie.com.br/?token=', '')
+            
+        self.token = token
+        self.loggedin = True
+        await utils.goto(self.page, f'https://alunos.imaginie.com.br/?token={token}')
+        utils.cprint(text='logged in', color='green')
+
+    async def do_get_essays(self, args) -> None:
+        'Get essays'
+
+        if self.parent.need_help(args, docs.RUTILS_GET_ESSAYS):
+            return
+
+        if not utils.check_login(self.loggedin):
+            return
+
+        args = shlex.split(args)
+        essay_types = ['themes', 'my-essays']
+
+        essay_type = utils.get_default(args, 0, essay_types[1])
+        if essay_type not in essay_types:
+            prompt = 'essay type unknown; see `get_essays help` for more info'
+            utils.cprint(text=prompt, color='red')
+            return
+        
+        essay_type_idx = essay_types.index(essay_type)
+        essay_type_btns = await self.page.querySelectorAll('.mat-tab-label-content')
+        essay_type_btn_selected = essay_type_btns[essay_type_idx]
+        await essay_type_btn_selected.click()
+        eval_query = "document.querySelectorAll('.loading_modal:not([hidden])').length === 0"
+        await utils.wait_loading(self.page, eval_query=eval_query, val=False, sleep=2)
 
     def do_clear(self, args) -> None:
         'Clear the terminal'
@@ -907,11 +1012,27 @@ class rUtils(cmd.Cmd):
         utils.prefix = 'rutils: '
 
         if not utils.check_login():
+            utils.prefix = 'mbsh: '
             return 'EOF'
 
     async def postloop(self) -> None:
+        stored_token = self.parent.config.get('rutils.token', None)
+        if stored_token != self.token:
+            prompt = 'save new Imaginie token (y/n)? '
+            choice = utils.get_input(text=prompt, color='blue', confirm=False)
+            choice = choice.lower()
+
+            if choice == 'y':
+                self.parent.config['rutils.token'] = self.token
+                prompt = 'new token saved successfully'
+                utils.cprint(text=prompt, color='green')
+            else:
+                prompt = 'new token discarded'
+                utils.cprint(text=prompt)
+
         prompt = 'close Imaginie tab (y/n)? '
         choice = utils.get_input(text=prompt, color='blue', confirm=False)
+        choice = choice.lower()
 
         if choice == 'y':
             await self.page.close()
