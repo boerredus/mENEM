@@ -101,7 +101,8 @@ class MbSh(cmd.Cmd):
                     utils.cprint(text=f'{key}: {val}', _prefix='')
 
         elif action == 'load':
-            configfile = utils.get_default(args, 0) or self.config.get('cache', None)
+            configfile = utils.get_default(
+                args, 0) or self.config.get('cache', None)
 
             if configfile is None:
                 prompt = '`config load` needs a reference to the config file'
@@ -119,7 +120,8 @@ class MbSh(cmd.Cmd):
 
         elif action == 'save':
             # default config file or given as argument
-            configfile = utils.get_default(args, 0) or self.config.get('cache', None)
+            configfile = utils.get_default(
+                args, 0) or self.config.get('cache', None)
 
             if configfile is None or not self.file_exists(configfile, key=None):
                 prompt = '`config save` needs a reference to the config file'
@@ -202,7 +204,8 @@ class MbSh(cmd.Cmd):
         if email is None:
             prompt = 'type in your email address: '
             email = utils.get_input(text=prompt, color='blue')
-            choice = utils.get_input(text='save email (y/n)? ', color='blue', confirm=False)
+            choice = utils.get_input(
+                text='save email (y/n)? ', color='blue', confirm=False)
             choice = choice.lower()
             if choice == 'y':
                 self.config['email'] = email
@@ -294,7 +297,7 @@ class MbSh(cmd.Cmd):
         for key, val in self.config.items():
             if key.startswith('output'):
                 old_val = utils.output[key]
-                
+
                 if old_val != val:
                     utils.output[key] = val
 
@@ -372,8 +375,9 @@ class MbSh(cmd.Cmd):
 
             if has_configfile and not configfile_empty and has_new_configs:
                 if not overwrite:
-                    prompt = 'overwrite existing cache file (y/ n)? '
-                    overwrite = utils.get_input(text=prompt, color='blue', confirm=False)
+                    prompt = 'overwrite existing cache file (y/n)? '
+                    overwrite = utils.get_input(
+                        text=prompt, color='blue', confirm=False)
                     overwrite = overwrite.lower()
 
                     if overwrite == 'y':
@@ -716,7 +720,8 @@ class mENEM(cmd.Cmd):
             imgs.append(img)
 
         output = output or self.parent.config['menem.output']
-        pdf.save(output, 'PDF', resolution=100.0, save_all=True, append_images=imgs)
+        pdf.save(output, 'PDF', resolution=100.0,
+                 save_all=True, append_images=imgs)
 
         prompt = 'delete downloaded images (y/n)? '
         choice = utils.get_input(text=prompt, color='blue', confirm=False)
@@ -958,7 +963,7 @@ class rUtils(cmd.Cmd):
             """
             url = await self.page.evaluate(fetchReq)
             token = url.replace('https://alunos.imaginie.com.br/?token=', '')
-            
+
         self.token = token
         self.loggedin = True
         await utils.goto(self.page, f'https://alunos.imaginie.com.br/?token={token}')
@@ -981,7 +986,7 @@ class rUtils(cmd.Cmd):
             prompt = 'essay type unknown; see `get_essays help` for more info'
             utils.cprint(text=prompt, color='red')
             return
-        
+
         essay_type_idx = essay_types.index(essay_type)
         essay_type_btns = await self.page.querySelectorAll('.mat-tab-label-content')
         essay_type_btn_selected = essay_type_btns[essay_type_idx]

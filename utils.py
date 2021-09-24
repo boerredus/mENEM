@@ -14,7 +14,7 @@ output: dict[str, bool] = {
 }
 
 
-async def wait_loading(page, query: str='', once: bool = False, eval_query: str=None, val=None, sleep=0.5):
+async def wait_loading(page, query: str = '', once: bool = False, eval_query: str = None, val=None, sleep=0.5):
     if eval_query != None:
         element = await page.evaluate(eval_query)
     else:
@@ -78,7 +78,7 @@ def get_selection(options: list, _min: int) -> int:
             cprint(color='red', text=prompt)
 
 
-def cprint(color: str = None, text: str = '', end='\n', _prefix: str=None, force: bool=False) -> None:
+def cprint(color: str = None, text: str = '', end='\n', _prefix: str = None, force: bool = False) -> None:
     _output = output.get('output', True)
     log = output.get('output.log', True)
     success = output.get('output.success', True)
@@ -86,9 +86,9 @@ def cprint(color: str = None, text: str = '', end='\n', _prefix: str=None, force
     error = output.get('output.error', True)
 
     hide_output = not _output
-    hide_log = color == None and not log 
+    hide_log = color == None and not log
     hide_success = color == 'green' and not success
-    hide_warn = color == 'yellow' and not warn 
+    hide_warn = color == 'yellow' and not warn
     hide_error = color == 'red' and not error
     hide = hide_output or hide_log or hide_success or hide_warn or hide_error
 
@@ -96,7 +96,7 @@ def cprint(color: str = None, text: str = '', end='\n', _prefix: str=None, force
         return
 
     if _prefix == None:
-            _prefix = prefix
+        _prefix = prefix
 
     termcolor.cprint(text=_prefix + text, color=color, end=end)
 
@@ -120,17 +120,18 @@ def check_login(is_loggedin=None) -> bool:
     if not is_loggedin:
         prompt = 'in order to complete this action, you must be logged in'
         cprint(color='red', text=prompt)
-        
+
     return is_loggedin
 
 
 def is_cmd_safe(cmd, report=True):
     cmd = cmd.strip()
     action = get_default(cmd.split(' '), 0)
-    is_cmd_allowed = action in ['EOF', 'clear', 'config', 'help', 'history', 'login']
+    is_cmd_allowed = action in ['EOF', 'clear',
+                                'config', 'help', 'history', 'login']
 
     if not is_cmd_allowed and report:
         prompt = f'skipping `{cmd}`'
         cprint(text=prompt, color='yellow', _prefix='', force=True)
-    
+
     return is_cmd_allowed
