@@ -518,7 +518,7 @@ class mENEM(cmd.Cmd):
         'Get the URLs of the simulations (questions & answers)'
         self.parent.print_help(args, docs.MENEM_GET_DATA, ignore=False)
 
-        if not utils.is_loggedin():
+        if not utils.check_login():
             return
 
         await utils.goto(self.page, 'https://meu.bernoulli.com.br/simulados/aluno/provas_correcoes')
@@ -906,7 +906,7 @@ class rUtils(cmd.Cmd):
     async def preloop(self) -> None:
         utils.prefix = 'rutils: '
 
-        if not utils.is_loggedin():
+        if not utils.check_login():
             return 'EOF'
 
     async def postloop(self) -> None:

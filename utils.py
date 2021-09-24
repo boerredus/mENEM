@@ -105,7 +105,7 @@ async def goto(page, url: str) -> None:
         await page.goto(url)
 
 
-def is_loggedin() -> bool:
+def check_login() -> bool:
     if not loggedin:
         prompt = 'in order to complete this action, you must be logged in'
         cprint(color='red', text=prompt)
