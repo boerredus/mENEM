@@ -5,6 +5,13 @@ import termcolor
 
 prefix: str = 'mbsh: '
 loggedin: bool = False
+output: dict[str, bool] = {
+    'output': True,
+    'output.log': True,
+    'output.success': False,
+    'output.warn': True,
+    'output.error': True
+}
 
 
 async def wait_loading(page, query: str, once: bool = False):
@@ -64,8 +71,24 @@ def get_selection(options: list, _min: int) -> int:
 
 
 def cprint(color: str = None, text: str = '', end='\n', _prefix: str=None) -> None:
-    if _prefix is None:
-        _prefix = prefix
+    _output = output.get('output', True)
+    log = output.get('output.log', True)
+    success = output.get('output.success', False)
+    warn = output.get('output.warn', True)
+    error = output.get('output.error', True)
+
+    hide_output = not _output
+    hide_log = color == None and not log 
+    hide_success = color == 'green' and not success
+    hide_warn = color == 'yellow' and not warn 
+    hide_error = color == 'red' and not error
+    hide = hide_output or hide_log or hide_success or hide_warn or hide_error
+
+    if color != 'blue' and hide:
+        return
+
+    if _prefix == None:
+            _prefix = prefix
 
     termcolor.cprint(text=_prefix + text, color=color, end=end)
 
