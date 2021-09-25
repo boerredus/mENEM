@@ -27,7 +27,10 @@ It's necessary to execute it before entering `menem` or `imaginie`
 """
 
 HISTORY = """
-History yay
+
+"""
+
+QUERY = """
 """
 
 MENEM = """
@@ -94,4 +97,10 @@ RUTILS = """
 """
 
 RUTILS_GET_ESSAYS = """
+"""
+
+RUTILS_QUERY = """
+"""
+
+RUTILS_QUERY_DETAILS = """
 """
