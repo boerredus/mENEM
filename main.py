@@ -33,6 +33,7 @@ async def parse_file(fp: io.TextIOWrapper, _mbsh: mbsh.MbSh):
 async def main():
     args = parse_args()
     _mbsh = mbsh.MbSh()
+    headless = not args.foreground
 
     if args.file != None:
         if not os.path.isfile(args.file):
@@ -43,12 +44,13 @@ async def main():
                 await parse_file(fp, _mbsh)
     elif args.eval != None:
         cmds = tssplit(args.eval, delimiter=';')
+        await _mbsh.preloop(headless=headless)
 
         for cmd in cmds:
             if utils.is_cmd_safe(cmd):
                 await _mbsh.onecmd(cmd)
     else:
-        await _mbsh.cmdloop(headless=not args.foreground)
+        await _mbsh.cmdloop(headless=headless)
 
 if __name__ == '__main__':
     asyncio.get_event_loop().run_until_complete(main())
