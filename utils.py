@@ -1,5 +1,6 @@
 import os
 import time
+import shlex
 
 import termcolor
 
@@ -68,9 +69,7 @@ def get_selection(options: list, _min: int) -> int:
             answer = get_input(prompt, confirm=False, color='blue')
             answer = int(answer)
             if answer > len(options):
-                prompt = 'please, pick one of the given options'
-                cprint(color='red', text=prompt)
-                continue
+                raise ValueError()
 
             return answer
         except ValueError:
@@ -113,7 +112,7 @@ async def goto(page, url: str) -> None:
         await page.goto(url)
 
 
-def check_login(is_loggedin=None) -> bool:
+def check_login(is_loggedin: bool=None) -> bool:
     if is_loggedin == None:
         is_loggedin = loggedin
 
@@ -124,7 +123,7 @@ def check_login(is_loggedin=None) -> bool:
     return is_loggedin
 
 
-def is_cmd_safe(cmd, report=True):
+def is_cmd_safe(cmd: str, report: bool=True):
     cmd = cmd.strip()
     action = get_default(cmd.split(' '), 0)
     is_cmd_allowed = action in ['EOF', 'clear',
@@ -135,3 +134,12 @@ def is_cmd_safe(cmd, report=True):
         cprint(text=prompt, color='yellow', _prefix='', force=True)
 
     return is_cmd_allowed
+
+def need_help(args: str, help_msg: str) -> bool:
+    args = shlex.split(args)
+    action = get_default(args, 0)
+
+    if action == 'help':
+        cprint(text=help_msg, _prefix='')
+
+    return action == 'help'
