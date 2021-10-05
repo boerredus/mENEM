@@ -630,7 +630,8 @@ class mENEM(cmd.Cmd):
                 saved_questions.append(q)
                 saved_answers.append(a)
 
-        if len(saved_questions + saved_answers) == 0:
+        new_content = saved_questions + saved_answers
+        if len(new_content) == 0:
             prompt = 'no new URLs saved'
             utils.cprint(color='yellow', text=prompt, force=True)
         else:
@@ -643,7 +644,7 @@ class mENEM(cmd.Cmd):
             output = list(filter(bool, output_alternatives))[0]
             self.parent.config['menem.output'] = output
 
-            prompt = f'fetched simulations, questions and answers (total of {len(self.urls)} URLs saved)'
+            prompt = f'fetched simulations, questions and answers ({len(new_content) / 2} question(s) saved)'
             utils.cprint(color='green', text=prompt)
 
     def do_download_images(self, args):
