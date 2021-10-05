@@ -630,23 +630,21 @@ class mENEM(cmd.Cmd):
                 saved_questions.append(q)
                 saved_answers.append(a)
 
-        self.urls.extend(saved_questions + saved_answers)
-        output_alternatives = (
-            # optional CLI arg; None if nothing's given
-            utils.get_default(args, 1),
-            # None by default; user can overwrite on config menem.output 'output_here'
-            self.parent.config.get('menem.output', None),
-            # 'Simul_Num (Subj).pdf'; default fallback
-            f'{simulations[simulation_choice - 1]} ({subjects[subject_choice]}).pdf'
-        )
+        if len(saved_questions + saved_answers) == 0:
+            prompt = 'no new URLs saved'
+            utils.cprint(color='yellow', text=prompt)
+        else:
+            self.urls.extend(saved_questions + saved_answers)
+            output_alternatives = (
+                utils.get_default(args, 1),
+                self.parent.config.get('menem.output', None),
+                f'{simulations[simulation_choice - 1]} ({subjects[subject_choice]}).pdf'
+            )
+            output = list(filter(bool, output_alternatives))[0]
+            self.parent.config['output'] = output
 
-        for output in output_alternatives:
-            if output != None:
-                self.parent.config['output'] = output
-                break
-
-        prompt = 'fetched simulations, questions and answers'
-        utils.cprint(color='green', text=prompt)
+            prompt = f'fetched simulations, questions and answers (total of {len(self.urls)} URLs saved)'
+            utils.cprint(color='green', text=prompt)
 
     def do_download_images(self, args):
         'Download images from the URLs'
