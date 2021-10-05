@@ -698,7 +698,7 @@ class mENEM(cmd.Cmd):
             return
 
         args = shlex.split(args)
-        output = utils.get_default(args, 0)
+        output = utils.get_default(args, 0) or self.parent.config['menem.output']
         imgs = []
 
         if not output.endswith('.pdf'):
@@ -709,19 +709,14 @@ class mENEM(cmd.Cmd):
             utils.cprint(color='red', text=prompt)
             return
 
-        pdf = self.images[0]
-        pdf = Image.open(pdf)
-        pdf = pdf.convert('RGB')
-
-        for img in self.images[1:]:
+        for img in self.images:
             img = Image.open(img)
             img = img.convert('RGB')
 
             imgs.append(img)
 
-        output = output or self.parent.config['menem.output']
-        pdf.save(output, 'PDF', resolution=100.0,
-                 save_all=True, append_images=imgs)
+        pdf = imgs[0]
+        pdf.save(output, 'PDF', resolution=100.0, save_all=True, append_images=imgs[1:])
 
         prompt = 'delete downloaded images (y/n)? '
         choice = utils.get_input(text=prompt, color='blue', confirm=False)
