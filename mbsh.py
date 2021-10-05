@@ -22,7 +22,6 @@ class MbSh(cmd.Cmd):
     browser = None
     history: list[str] = []
     menem = None
-    rutils = None
     pages: dict = {}
     config: dict[str] = {
         'cache': os.path.dirname(__file__) + '/config.json',
@@ -266,10 +265,6 @@ class MbSh(cmd.Cmd):
         'Enter mENEM utility'
         await self.start_utility(args, 'menem', 'mENEM', docs.MENEM)
 
-    async def do_rutils(self, args) -> None:
-        'Enter rUtils'
-        await self.start_utility(args, 'rutils', 'rUtils', docs.RUTILS)
-
     async def start_utility(self, args, utility: str, utility_name: str, docs: str):
         obj = getattr(self, utility)
 
@@ -409,9 +404,6 @@ class MbSh(cmd.Cmd):
 
         page = await self.get_page('menem')
         self.menem = mENEM(page, self)
-
-        page = await self.get_page('rutils')
-        self.rutils = rUtils(page, self)
 
         prestart = self.config.get('on.start', None)
         if prestart != None:
@@ -844,218 +836,6 @@ class mENEM(cmd.Cmd):
             await self.preloop()
         else:
             self.preloop()
-
-        try:
-            import readline
-
-            old_completer = readline.get_completer()
-            readline.set_completer(self.parent.complete)
-            readline.parse_and_bind(completekey+": complete")
-        except ImportError:
-            pass
-
-        try:
-            if intro is not None:
-                self.intro = intro
-
-            if self.intro:
-                self.stdout.write(str(self.intro)+"\n")
-
-            stop = None
-
-            while not stop:
-                try:
-                    line = input(self.prompt)
-                except EOFError:
-                    line = 'EOF'
-
-                line = self.parent.precmd(line)
-                stop = await self.onecmd(line)
-                stop = self.parent.postcmd(stop, line)
-
-            if inspect.iscoroutinefunction(self.postloop):
-                await self.postloop()
-            else:
-                self.postloop()
-
-        finally:
-            if self.parent.use_rawinput and completekey:
-                try:
-                    import readline
-
-                    readline.set_completer(old_completer)
-                except ImportError:
-                    pass
-
-    async def onecmd(self, line):
-        self.parent.history.append(line)
-        cmd, arg, line = self.parent.parseline(line)
-
-        if not line:
-            return self.emptyline()
-
-        if cmd is None:
-            return self.default(line)
-
-        self.lastcmd = line
-
-        if line == 'EOF':
-            self.lastcmd = ''
-
-        if cmd == '':
-            return self.parent.default(line)
-        else:
-            try:
-                func = getattr(self, 'do_' + cmd)
-            except AttributeError:
-                return self.default(line)
-
-            if inspect.iscoroutinefunction(func):
-                return await func(arg)
-
-            return func(arg)
-
-
-class rUtils(cmd.Cmd):
-    page = None
-    parent: MbSh = None
-    prompt: str = 'rutils> '
-    token: str = None
-    loggedin: bool = False
-
-    def __init__(self, page, parent) -> None:
-        super().__init__()
-
-        self.page = page
-        self.parent = parent
-
-    async def do_login(self, args) -> None:
-        'Enter Imaginie page'
-
-        if self.loggedin:
-            prompt = 'already logged in'
-            utils.cprint(text=prompt, force=True)
-            return
-
-        args = shlex.split(args)
-        given_token = utils.get_default(args, 0)
-        saved_token = self.parent.config.get('rutils.token', None)
-        token = given_token or saved_token or self.token
-        utils.cprint(text='logging in')
-
-        if token != None:
-            url = f'https://alunos.imaginie.com.br/?token={token}'
-            await utils.goto(self.page, url)
-        else:
-            await utils.goto(self.page, 'https://meu.bernoulli.com.br/')
-            fetchReq = """
-            (async function(){
-                const endpoint = 'https://meu.bernoulli.com.br/simulados/aluno/redacao';
-                let res = await fetch(endpoint, { method: 'GET' });
-                res = await res.json()
-                return res.mensagem.url
-            })()
-            """
-            url = await self.page.evaluate(fetchReq)
-            token = url.replace('https://alunos.imaginie.com.br/?token=', '')
-
-        self.token = token
-        self.loggedin = True
-        await utils.goto(self.page, f'https://alunos.imaginie.com.br/?token={token}')
-        utils.cprint(text='logged in', color='green')
-
-    async def do_get_essays(self, args) -> None:
-        'Get essays'
-
-        if self.parent.need_help(args, docs.RUTILS_GET_ESSAYS):
-            return
-
-        if not utils.check_login(self.loggedin):
-            return
-
-        args = shlex.split(args)
-        essay_types = ['themes', 'my-essays']
-
-        essay_type = utils.get_default(args, 0, essay_types[1])
-        if essay_type not in essay_types:
-            prompt = 'essay type unknown; see `get_essays help` for more info'
-            utils.cprint(text=prompt, color='red')
-            return
-
-        essay_type_idx = essay_types.index(essay_type)
-        essay_type_btns = await self.page.querySelectorAll('.mat-tab-label-content')
-        essay_type_btn_selected = essay_type_btns[essay_type_idx]
-        await essay_type_btn_selected.click()
-        eval_query = "document.querySelectorAll('.loading_modal:not([hidden])').length === 0"
-        await utils.wait_loading(self.page, eval_query=eval_query, val=False, sleep=2)
-
-    def do_clear(self, args) -> None:
-        'Clear the terminal'
-        self.parent.do_clear(args)
-
-    async def do_history(self, args) -> None:
-        'View history'
-        await self.parent.do_history(args)
-
-    def do_EOF(self, args=None) -> None:
-        'Exit'
-        print()
-        return 'EOF'
-
-    def get_page(self):
-        return self.page
-
-    def set_page(self, page) -> None:
-        self.page = page
-
-    async def preloop(self) -> None:
-        utils.prefix = 'rutils: '
-
-        if not utils.check_login():
-            utils.prefix = 'mbsh: '
-            return 'EOF'
-
-    async def postloop(self) -> None:
-        stored_token = self.parent.config.get('rutils.token', None)
-        if stored_token != self.token:
-            prompt = 'save new Imaginie token (y/n)? '
-            choice = utils.get_input(text=prompt, color='blue', confirm=False)
-            choice = choice.lower()
-
-            if choice == 'y':
-                self.parent.config['rutils.token'] = self.token
-                prompt = 'new token saved successfully'
-                utils.cprint(text=prompt, color='green')
-            else:
-                prompt = 'new token discarded'
-                utils.cprint(text=prompt)
-
-        prompt = 'close Imaginie tab (y/n)? '
-        choice = utils.get_input(text=prompt, color='blue', confirm=False)
-        choice = choice.lower()
-
-        if choice == 'y':
-            await self.page.close()
-
-        utils.prefix = 'mbsh: '
-
-    def default(self, line=None, msg=None) -> None:
-        self.parent.default(line=line, msg=msg)
-
-    def emptyline(self) -> None:
-        pass
-
-    async def cmdloop(self, intro=None):
-        old_completer = None
-        completekey = 'tab'
-
-        if inspect.iscoroutinefunction(self.preloop):
-            stop = await self.preloop()
-        else:
-            stop = self.preloop()
-
-        if stop == 'EOF':
-            return
 
         try:
             import readline

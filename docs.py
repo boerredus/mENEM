@@ -92,15 +92,3 @@ Note: if an output is given, it overwrites the config (see `config help`) `menem
 
 `gen_pdf help` prints this help message and exits.
 """
-
-RUTILS = """
-"""
-
-RUTILS_GET_ESSAYS = """
-"""
-
-RUTILS_QUERY = """
-"""
-
-RUTILS_QUERY_DETAILS = """
-"""
