@@ -569,7 +569,7 @@ class mENEM(cmd.Cmd):
 
         parsed, err = self.level_parser(level)
 
-        subjects = ['CL', 'CH', 'CN', 'MT']
+        subjects = ['LC', 'CH', 'CN', 'MT']
         simulations_query = 'select#codigoSimulado > option:not([value*=" "])'
         simulationsJS = '(simulations => simulations.map(simul => simul.innerHTML))'
         selectorJS = "sel => {{ sel.selectedIndex = {}; sel.dispatchEvent(new Event('change', {{ bubbles: true }}))}}"
