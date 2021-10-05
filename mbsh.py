@@ -632,7 +632,7 @@ class mENEM(cmd.Cmd):
 
         if len(saved_questions + saved_answers) == 0:
             prompt = 'no new URLs saved'
-            utils.cprint(color='yellow', text=prompt)
+            utils.cprint(color='yellow', text=prompt, force=True)
         else:
             self.urls.extend(saved_questions + saved_answers)
             output_alternatives = (
@@ -641,7 +641,7 @@ class mENEM(cmd.Cmd):
                 f'{simulations[simulation_choice - 1]} ({subjects[subject_choice]}).pdf'
             )
             output = list(filter(bool, output_alternatives))[0]
-            self.parent.config['output'] = output
+            self.parent.config['menem.output'] = output
 
             prompt = f'fetched simulations, questions and answers (total of {len(self.urls)} URLs saved)'
             utils.cprint(color='green', text=prompt)
@@ -705,8 +705,8 @@ class mENEM(cmd.Cmd):
 
             imgs.append(img)
 
-        pdf = imgs[0]
-        pdf.save(output, 'PDF', resolution=100.0, save_all=True, append_images=imgs[1:])
+        pdf = imgs.pop(0)
+        pdf.save(output, 'PDF', resolution=100.0, save_all=True, append_images=imgs)
 
         prompt = 'delete downloaded images (y/n)? '
         choice = utils.get_input(text=prompt, color='blue', confirm=False)
